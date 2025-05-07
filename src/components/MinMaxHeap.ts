@@ -5,12 +5,12 @@ export type HeapStep = {
 };
 
 export class MinMaxHeap {
-  private heap: number[] = []; // 0-based 索引
+  private heap: number[] = [0]; // 1-based 索引，0 留空
   private steps: HeapStep[] = [];
 
   // 獲取節點所在層級
   private getLevel(index: number): number {
-    return Math.floor(Math.log2(index + 1));
+    return Math.floor(Math.log2(index));
   }
 
   // 判斷是否為 min 層（偶數層）
@@ -20,16 +20,16 @@ export class MinMaxHeap {
 
   // 父節點索引
   private parent(index: number): number {
-    return Math.floor((index - 1) / 2);
+    return Math.floor(index / 2);
   }
 
   // 子節點索引
   private leftChild(index: number): number {
-    return 2 * index + 1;
+    return 2 * index;
   }
 
   private rightChild(index: number): number {
-    return 2 * index + 2;
+    return 2 * index + 1;
   }
 
   // 祖父節點索引
@@ -45,7 +45,7 @@ export class MinMaxHeap {
     this.steps.push({
       heap: [...this.heap],
       highlight: [newIndex],
-      description: `Inserted ${value} at index ${newIndex + 1}`,
+      description: `Inserted ${value} at index ${newIndex}`,
     });
     this.pushUp(newIndex);
     return this.steps;
@@ -54,15 +54,15 @@ export class MinMaxHeap {
   // 刪除最小值
   deleteMin(): HeapStep[] {
     this.steps = [];
-    if (this.heap.length === 0) {
+    if (this.heap.length <= 1) {
       this.steps.push({
-        heap: [],
+        heap: [0],
         highlight: null,
         description: `Heap is empty, nothing to delete`,
       });
       return this.steps;
     }
-    if (this.heap.length === 1) {
+    if (this.heap.length === 2) {
       const min = this.heap.pop()!;
       this.steps.push({
         heap: [...this.heap],
@@ -72,31 +72,31 @@ export class MinMaxHeap {
       return this.steps;
     }
 
-    const min = this.heap[0];
+    const min = this.heap[1];
     const lastIndex = this.heap.length - 1;
-    this.heap[0] = this.heap[lastIndex];
+    this.heap[1] = this.heap[lastIndex];
     this.heap.pop();
     this.steps.push({
       heap: [...this.heap],
-      highlight: [0, lastIndex],
-      description: `Moved last element ${this.heap[0]} from index ${lastIndex + 1} to root (index 1)`,
+      highlight: [1, lastIndex],
+      description: `Moved last element ${this.heap[1]} from index ${lastIndex} to root (index 1)`,
     });
-    this.pushDown(0);
+    this.pushDown(1);
     return this.steps;
   }
 
   // 刪除最大值
   deleteMax(): HeapStep[] {
     this.steps = [];
-    if (this.heap.length === 0) {
+    if (this.heap.length <= 1) {
       this.steps.push({
-        heap: [],
+        heap: [0],
         highlight: null,
         description: `Heap is empty, nothing to delete`,
       });
       return this.steps;
     }
-    if (this.heap.length === 1) {
+    if (this.heap.length === 2) {
       const max = this.heap.pop()!;
       this.steps.push({
         heap: [...this.heap],
@@ -105,7 +105,7 @@ export class MinMaxHeap {
       });
       return this.steps;
     }
-    if (this.heap.length === 2) {
+    if (this.heap.length === 3) {
       const max = this.heap.pop()!;
       this.steps.push({
         heap: [...this.heap],
@@ -115,21 +115,21 @@ export class MinMaxHeap {
       return this.steps;
     }
 
-    // 找到 max 層（第一層，索引 1 或 2）的最大值
-    const maxIndex = this.heap[1] > (this.heap[2] || -Infinity) ? 1 : 2;
+    // 找到 max 層（第一層，索引 2 或 3）的最大值
+    const maxIndex = this.heap[2] > (this.heap[3] || -Infinity) ? 2 : 3;
     const max = this.heap[maxIndex];
     const lastIndex = this.heap.length - 1;
     this.steps.push({
       heap: [...this.heap],
       highlight: [maxIndex],
-      description: `Selected max element ${max} at index ${maxIndex + 1}`,
+      description: `Selected max element ${max} at index ${maxIndex}`,
     });
     this.heap[maxIndex] = this.heap[lastIndex];
     this.heap.pop();
     this.steps.push({
       heap: [...this.heap],
       highlight: [maxIndex, lastIndex],
-      description: `Moved last element ${this.heap[maxIndex]} from index ${lastIndex + 1} to index ${maxIndex + 1}`,
+      description: `Moved last element ${this.heap[maxIndex]} from index ${lastIndex} to index ${maxIndex}`,
     });
     this.pushDown(maxIndex);
     return this.steps;
@@ -214,7 +214,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, m],
-        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with smallest descendant ${this.heap[m]} (index ${m + 1})`,
+        description: `Comparing ${this.heap[index]} (min level, index ${index}) with smallest descendant ${this.heap[m]} (index ${m})`,
       });
 
       if (this.heap[m] < this.heap[index]) {
@@ -231,7 +231,7 @@ export class MinMaxHeap {
             this.steps.push({
               heap: [...this.heap],
               highlight: [m, parentM],
-              description: `Comparing ${this.heap[m]} (min level, index ${m + 1}) with parent ${this.heap[parentM]} (max level, index ${parentM + 1})`,
+              description: `Comparing ${this.heap[m]} (min level, index ${m}) with parent ${this.heap[parentM]} (max level, index ${parentM})`,
             });
             this.swap(m, parentM);
             this.steps.push({
@@ -243,7 +243,7 @@ export class MinMaxHeap {
             this.steps.push({
               heap: [...this.heap],
               highlight: [m, parentM],
-              description: `Comparing ${this.heap[m]} (min level, index ${m + 1}) with parent ${this.heap[parentM]} (max level, index ${parentM + 1})`,
+              description: `Comparing ${this.heap[m]} (min level, index ${m}) with parent ${this.heap[parentM]} (max level, index ${parentM})`,
             });
             this.steps.push({
               heap: [...this.heap],
@@ -276,7 +276,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, m],
-        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with largest descendant ${this.heap[m]} (index ${m + 1})`,
+        description: `Comparing ${this.heap[index]} (max level, index ${index}) with largest descendant ${this.heap[m]} (index ${m})`,
       });
 
       if (this.heap[m] > this.heap[index]) {
@@ -293,7 +293,7 @@ export class MinMaxHeap {
             this.steps.push({
               heap: [...this.heap],
               highlight: [m, parentM],
-              description: `Comparing ${this.heap[m]} (max level, index ${m + 1}) with parent ${this.heap[parentM]} (min level, index ${parentM + 1})`,
+              description: `Comparing ${this.heap[m]} (max level, index ${m}) with parent ${this.heap[parentM]} (min level, index ${parentM})`,
             });
             this.swap(m, parentM);
             this.steps.push({
@@ -305,7 +305,7 @@ export class MinMaxHeap {
             this.steps.push({
               heap: [...this.heap],
               highlight: [m, parentM],
-              description: `Comparing ${this.heap[m]} (max level, index ${m + 1}) with parent ${this.heap[parentM]} (min level, index ${parentM + 1})`,
+              description: `Comparing ${this.heap[m]} (max level, index ${m}) with parent ${this.heap[parentM]} (min level, index ${parentM})`,
             });
             this.steps.push({
               heap: [...this.heap],
@@ -335,13 +335,13 @@ export class MinMaxHeap {
 
   // Push-up 操作（維基百科 bubble-up）
   private pushUp(index: number) {
-    if (index === 0) return;
+    if (index <= 1) return;
 
     const parentIndex = this.parent(index);
     this.steps.push({
       heap: [...this.heap],
       highlight: [index, parentIndex],
-      description: `Comparing ${this.heap[index]} (index ${index + 1}) with parent ${this.heap[parentIndex]} (${this.isMinLevel(parentIndex) ? 'min' : 'max'} level, index ${parentIndex + 1})`,
+      description: `Comparing ${this.heap[index]} (index ${index}) with parent ${this.heap[parentIndex]} (${this.isMinLevel(parentIndex) ? 'min' : 'max'} level, index ${parentIndex})`,
     });
 
     if (this.isMinLevel(index)) {
@@ -386,11 +386,11 @@ export class MinMaxHeap {
   // Push-up for min level
   private pushUpMin(index: number) {
     const grandparentIndex = this.grandparent(index);
-    if (grandparentIndex >= 0 && this.heap[index] < this.heap[grandparentIndex]) {
+    if (grandparentIndex >= 1 && this.heap[index] < this.heap[grandparentIndex]) {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, grandparentIndex],
-        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex + 1})`,
+        description: `Comparing ${this.heap[index]} (min level, index ${index}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex})`,
       });
       this.swap(index, grandparentIndex);
       this.steps.push({
@@ -399,11 +399,11 @@ export class MinMaxHeap {
         description: `Swapped ${this.heap[grandparentIndex]} with ${this.heap[index]}`,
       });
       this.pushUpMin(grandparentIndex);
-    } else if (grandparentIndex >= 0) {
+    } else if (grandparentIndex >= 1) {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, grandparentIndex],
-        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex + 1})`,
+        description: `Comparing ${this.heap[index]} (min level, index ${index}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex})`,
       });
       this.steps.push({
         heap: [...this.heap],
@@ -416,11 +416,11 @@ export class MinMaxHeap {
   // Push-up for max level
   private pushUpMax(index: number) {
     const grandparentIndex = this.grandparent(index);
-    if (grandparentIndex >= 0 && this.heap[index] > this.heap[grandparentIndex]) {
+    if (grandparentIndex >= 1 && this.heap[index] > this.heap[grandparentIndex]) {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, grandparentIndex],
-        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex + 1})`,
+        description: `Comparing ${this.heap[index]} (max level, index ${index}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex})`,
       });
       this.swap(index, grandparentIndex);
       this.steps.push({
@@ -429,11 +429,11 @@ export class MinMaxHeap {
         description: `Swapped ${this.heap[grandparentIndex]} with ${this.heap[index]}`,
       });
       this.pushUpMax(grandparentIndex);
-    } else if (grandparentIndex >= 0) {
+    } else if (grandparentIndex >= 1) {
       this.steps.push({
         heap: [...this.heap],
         highlight: [index, grandparentIndex],
-        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex + 1})`,
+        description: `Comparing ${this.heap[index]} (max level, index ${index}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex})`,
       });
       this.steps.push({
         heap: [...this.heap],

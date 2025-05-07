@@ -8,7 +8,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Min-Max Heap Visualization (1-based, Odd Layers Min, Even Layers Max)</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Min-Max Heap Visualization (1-based, Even Layers Min, Odd Layers Max)</h1>
       <div className="mb-4">
         <input
           type="number"
