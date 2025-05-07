@@ -5,8 +5,37 @@ export type HeapStep = {
 };
 
 export class MinMaxHeap {
-  private heap: number[] = [0]; // 1-based 索引，0 留空
+  private heap: number[] = []; // 0-based 索引
   private steps: HeapStep[] = [];
+
+  // 獲取節點所在層級
+  private getLevel(index: number): number {
+    return Math.floor(Math.log2(index + 1));
+  }
+
+  // 判斷是否為 min 層（偶數層）
+  private isMinLevel(index: number): boolean {
+    return this.getLevel(index) % 2 === 0;
+  }
+
+  // 父節點索引
+  private parent(index: number): number {
+    return Math.floor((index - 1) / 2);
+  }
+
+  // 子節點索引
+  private leftChild(index: number): number {
+    return 2 * index + 1;
+  }
+
+  private rightChild(index: number): number {
+    return 2 * index + 2;
+  }
+
+  // 祖父節點索引
+  private grandparent(index: number): number {
+    return this.parent(this.parent(index));
+  }
 
   // 插入新值
   insert(value: number) {
@@ -16,24 +45,24 @@ export class MinMaxHeap {
     this.steps.push({
       heap: [...this.heap],
       highlight: [newIndex],
-      description: `Inserted ${value} at index ${newIndex}`,
+      description: `Inserted ${value} at index ${newIndex + 1}`,
     });
-    this.bubbleUp(newIndex);
+    this.pushUp(newIndex);
     return this.steps;
   }
 
   // 刪除最小值
   deleteMin(): HeapStep[] {
     this.steps = [];
-    if (this.heap.length <= 1) {
+    if (this.heap.length === 0) {
       this.steps.push({
-        heap: [0],
+        heap: [],
         highlight: null,
         description: `Heap is empty, nothing to delete`,
       });
       return this.steps;
     }
-    if (this.heap.length === 2) {
+    if (this.heap.length === 1) {
       const min = this.heap.pop()!;
       this.steps.push({
         heap: [...this.heap],
@@ -43,62 +72,66 @@ export class MinMaxHeap {
       return this.steps;
     }
 
-    const min = this.heap[1];
+    const min = this.heap[0];
     const lastIndex = this.heap.length - 1;
-    this.heap[1] = this.heap[lastIndex];
+    this.heap[0] = this.heap[lastIndex];
     this.heap.pop();
     this.steps.push({
       heap: [...this.heap],
-      highlight: [1, lastIndex],
-      description: `Moved last element ${this.heap[1]} from index ${lastIndex} to root (index 1)`,
+      highlight: [0, lastIndex],
+      description: `Moved last element ${this.heap[0]} from index ${lastIndex + 1} to root (index 1)`,
     });
-    this.bubbleDown(1);
+    this.pushDown(0);
     return this.steps;
   }
 
   // 刪除最大值
   deleteMax(): HeapStep[] {
     this.steps = [];
-    if (this.heap.length <= 1) {
+    if (this.heap.length === 0) {
       this.steps.push({
-        heap: [0],
+        heap: [],
         highlight: null,
         description: `Heap is empty, nothing to delete`,
       });
       return this.steps;
     }
-    if (this.heap.length <= 3) {
+    if (this.heap.length === 1) {
       const max = this.heap.pop()!;
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Removed element ${max} at index ${this.heap.length}`,
+        description: `Removed only element ${max}`,
+      });
+      return this.steps;
+    }
+    if (this.heap.length === 2) {
+      const max = this.heap.pop()!;
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: null,
+        description: `Removed element ${max} at index 2`,
       });
       return this.steps;
     }
 
-    // 找到 max 層的第一個節點（索引 2 或 3）
-    let maxIndex = 2;
-    let maxValue = this.heap[2];
-    if (this.heap[3] && this.heap[3] > maxValue) {
-      maxIndex = 3;
-      maxValue = this.heap[3];
-    }
-
+    // 找到 max 層（第一層，索引 1 或 2）的最大值
+    const maxIndex = this.heap[1] > (this.heap[2] || -Infinity) ? 1 : 2;
+    const max = this.heap[maxIndex];
     const lastIndex = this.heap.length - 1;
     this.steps.push({
       heap: [...this.heap],
       highlight: [maxIndex],
-      description: `Selected max element ${maxValue} at index ${maxIndex}`,
+      description: `Selected max element ${max} at index ${maxIndex + 1}`,
     });
     this.heap[maxIndex] = this.heap[lastIndex];
     this.heap.pop();
     this.steps.push({
       heap: [...this.heap],
       highlight: [maxIndex, lastIndex],
-      description: `Moved last element ${this.heap[maxIndex]} from index ${lastIndex} to index ${maxIndex}`,
+      description: `Moved last element ${this.heap[maxIndex]} from index ${lastIndex + 1} to index ${maxIndex + 1}`,
     });
-    this.bubbleDown(maxIndex);
+    this.pushDown(maxIndex);
     return this.steps;
   }
 
@@ -107,246 +140,110 @@ export class MinMaxHeap {
     return [...this.heap];
   }
 
-  // 判斷節點是否在 Min 層（奇數層）
-  private isMinLevel(index: number): boolean {
-    return Math.floor(Math.log2(index)) % 2 === 0;
+  // 獲取最小後代（子節點或孫節點）
+  private getSmallestDescendant(index: number): number {
+    let smallest = index;
+    let smallestValue = this.heap[index];
+
+    const left = this.leftChild(index);
+    const right = this.rightChild(index);
+    if (left < this.heap.length && this.heap[left] < smallestValue) {
+      smallest = left;
+      smallestValue = this.heap[left];
+    }
+    if (right < this.heap.length && this.heap[right] < smallestValue) {
+      smallest = right;
+      smallestValue = this.heap[right];
+    }
+
+    const grandchildren = [
+      this.leftChild(left),
+      this.rightChild(left),
+      this.leftChild(right),
+      this.rightChild(right),
+    ].filter((i) => i < this.heap.length);
+    for (const gc of grandchildren) {
+      if (this.heap[gc] < smallestValue) {
+        smallest = gc;
+        smallestValue = this.heap[gc];
+      }
+    }
+
+    return smallest;
   }
 
-  // 上浮操作
-  private bubbleUp(index: number) {
-    if (index <= 1) return;
+  // 獲取最大後代（子節點或孫節點）
+  private getLargestDescendant(index: number): number {
+    let largest = index;
+    let largestValue = this.heap[index];
 
-    const parentIndex = Math.floor(index / 2);
-    let swapped = false;
+    const left = this.leftChild(index);
+    const right = this.rightChild(index);
+    if (left < this.heap.length && this.heap[left] > largestValue) {
+      largest = left;
+      largestValue = this.heap[left];
+    }
+    if (right < this.heap.length && this.heap[right] > largestValue) {
+      largest = right;
+      largestValue = this.heap[right];
+    }
 
-    // 第一步：與父節點比較
-    if (this.isMinLevel(parentIndex)) {
-      // 父節點在 min 層，插入節點較小則交換
-      if (this.heap[index] < this.heap[parentIndex]) {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, parentIndex],
-          description: `Comparing ${this.heap[index]} (index ${index}) with parent ${this.heap[parentIndex]} (min level, index ${parentIndex})`,
-        });
-        [this.heap[index], this.heap[parentIndex]] = [
-          this.heap[parentIndex],
-          this.heap[index],
-        ];
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: null,
-          description: `Swapped ${this.heap[parentIndex]} with ${this.heap[index]}`,
-        });
-        swapped = true;
-      } else {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, parentIndex],
-          description: `Comparing ${this.heap[index]} (index ${index}) with parent ${this.heap[parentIndex]} (min level, index ${parentIndex})`,
-        });
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: null,
-          description: `No swap needed`,
-        });
-      }
-    } else {
-      // 父節點在 max 層，插入節點較大則交換
-      if (this.heap[index] > this.heap[parentIndex]) {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, parentIndex],
-          description: `Comparing ${this.heap[index]} (index ${index}) with parent ${this.heap[parentIndex]} (max level, index ${parentIndex})`,
-        });
-        [this.heap[index], this.heap[parentIndex]] = [
-          this.heap[parentIndex],
-          this.heap[index],
-        ];
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: null,
-          description: `Swapped ${this.heap[parentIndex]} with ${this.heap[index]}`,
-        });
-        swapped = true;
-      } else {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, parentIndex],
-          description: `Comparing ${this.heap[index]} (index ${index}) with parent ${this.heap[parentIndex]} (max level, index ${parentIndex})`,
-        });
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: null,
-          description: `No swap needed`,
-        });
+    const grandchildren = [
+      this.leftChild(left),
+      this.rightChild(left),
+      this.leftChild(right),
+      this.rightChild(right),
+    ].filter((i) => i < this.heap.length);
+    for (const gc of grandchildren) {
+      if (this.heap[gc] > largestValue) {
+        largest = gc;
+        largestValue = this.heap[gc];
       }
     }
 
-    // 第二步：與祖父節點比較（兩層往上）
-    const grandParentIndex = Math.floor(parentIndex / 2);
-    if (grandParentIndex >= 1) {
-      if (this.isMinLevel(index)) {
-        // 當前節點在 min 層，比祖父節點（min 層）小則交換
-        if (this.heap[index] < this.heap[grandParentIndex]) {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, grandParentIndex],
-            description: `Comparing ${this.heap[index]} (min level, index ${index}) with grandparent ${this.heap[grandParentIndex]} (min level, index ${grandParentIndex})`,
-          });
-          [this.heap[index], this.heap[grandParentIndex]] = [
-            this.heap[grandParentIndex],
-            this.heap[index],
-          ];
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: null,
-            description: `Swapped ${this.heap[grandParentIndex]} with ${this.heap[index]}`,
-          });
-          this.bubbleUp(grandParentIndex);
-        } else {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, grandParentIndex],
-            description: `Comparing ${this.heap[index]} (min level, index ${index}) with grandparent ${this.heap[grandParentIndex]} (min level, index ${grandParentIndex})`,
-          });
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: null,
-            description: `No swap needed`,
-          });
-        }
-      } else {
-        // 當前節點在 max 層，比祖父節點（max 層）大則交換
-        if (this.heap[index] > this.heap[grandParentIndex]) {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, grandParentIndex],
-            description: `Comparing ${this.heap[index]} (max level, index ${index}) with grandparent ${this.heap[grandParentIndex]} (max level, index ${grandParentIndex})`,
-          });
-          [this.heap[index], this.heap[grandParentIndex]] = [
-            this.heap[grandParentIndex],
-            this.heap[index],
-          ];
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: null,
-            description: `Swapped ${this.heap[grandParentIndex]} with ${this.heap[index]}`,
-          });
-          this.bubbleUp(grandParentIndex);
-        } else {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, grandParentIndex],
-            description: `Comparing ${this.heap[index]} (max level, index ${index}) with grandparent ${this.heap[grandParentIndex]} (max level, index ${grandParentIndex})`,
-          });
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: null,
-            description: `No swap needed`,
-          });
-        }
-      }
-    }
-
-    // 若與父節點交換，繼續檢查新位置
-    if (swapped) {
-      this.bubbleUp(parentIndex);
-    }
+    return largest;
   }
 
-  // 下沉操作
-  private bubbleDown(index: number) {
-    const lastIndex = this.heap.length - 1;
-
+  // Push-down 操作（維基百科 trickle-down）
+  private pushDown(index: number) {
     if (this.isMinLevel(index)) {
-      // Min 層：檢查子節點（max 層）和孫節點（min 層）
-      let smallest = index;
-      let smallestValue = this.heap[index];
-      const children = [2 * index, 2 * index + 1];
-      const grandChildren = [
-        2 * children[0],
-        2 * children[0] + 1,
-        2 * children[1],
-        2 * children[1] + 1,
-      ].filter((i) => i <= lastIndex);
+      // Min 層
+      const m = this.getSmallestDescendant(index);
+      if (m === index) return;
 
-      // 檢查子節點
-      for (const child of children) {
-        if (child <= lastIndex) {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, child],
-            description: `Comparing ${this.heap[index]} (min level, index ${index}) with child ${this.heap[child]} (max level, index ${child})`,
-          });
-          if (this.heap[child] < smallestValue) {
-            smallest = child;
-            smallestValue = this.heap[child];
-          }
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, m],
+        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with smallest descendant ${this.heap[m]} (index ${m + 1})`,
+      });
+
+      if (this.heap[m] < this.heap[index]) {
+        if (this.getLevel(m) - this.getLevel(index) === 2) {
+          // 孫節點
+          this.swap(index, m);
           this.steps.push({
             heap: [...this.heap],
             highlight: null,
-            description: `Child ${this.heap[child]} ${this.heap[child] < smallestValue ? 'is smaller' : 'is not smaller'}`,
+            description: `Swapped ${this.heap[m]} with ${this.heap[index]}`,
           });
-        }
-      }
-      // 檢查孫節點
-      for (const grandChild of grandChildren) {
-        if (grandChild <= lastIndex) {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, grandChild],
-            description: `Comparing ${this.heap[index]} (min level, index ${index}) with grandchild ${this.heap[grandChild]} (min level, index ${grandChild})`,
-          });
-          if (this.heap[grandChild] < smallestValue) {
-            smallest = grandChild;
-            smallestValue = this.heap[grandChild];
-          }
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: null,
-            description: `Grandchild ${this.heap[grandChild]} ${this.heap[grandChild] < smallestValue ? 'is smaller' : 'is not smaller'}`,
-          });
-        }
-      }
-
-      if (smallest !== index) {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, smallest],
-          description: `Swapping ${this.heap[index]} (index ${index}) with smallest descendant ${this.heap[smallest]} (index ${smallest})`,
-        });
-        [this.heap[index], this.heap[smallest]] = [
-          this.heap[smallest],
-          this.heap[index],
-        ];
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: null,
-          description: `Swapped ${this.heap[smallest]} with ${this.heap[index]}`,
-        });
-        // 如果交換的是孫節點，檢查其父節點（max 層）
-        if (grandChildren.includes(smallest)) {
-          const parentIndex = Math.floor(smallest / 2);
-          if (this.heap[parentIndex] < this.heap[smallest]) {
+          const parentM = this.parent(m);
+          if (this.heap[m] > this.heap[parentM]) {
             this.steps.push({
               heap: [...this.heap],
-              highlight: [smallest, parentIndex],
-              description: `Comparing ${this.heap[smallest]} (min level, index ${smallest}) with parent ${this.heap[parentIndex]} (max level, index ${parentIndex})`,
+              highlight: [m, parentM],
+              description: `Comparing ${this.heap[m]} (min level, index ${m + 1}) with parent ${this.heap[parentM]} (max level, index ${parentM + 1})`,
             });
-            [this.heap[smallest], this.heap[parentIndex]] = [
-              this.heap[parentIndex],
-              this.heap[smallest],
-            ];
+            this.swap(m, parentM);
             this.steps.push({
               heap: [...this.heap],
               highlight: null,
-              description: `Swapped ${this.heap[parentIndex]} with ${this.heap[smallest]}`,
+              description: `Swapped ${this.heap[parentM]} with ${this.heap[m]}`,
             });
-          } else {
+          } else if (this.heap[m] <= this.heap[parentM]) {
             this.steps.push({
               heap: [...this.heap],
-              highlight: [smallest, parentIndex],
-              description: `Comparing ${this.heap[smallest]} (min level, index ${smallest}) with parent ${this.heap[parentIndex]} (max level, index ${parentIndex})`,
+              highlight: [m, parentM],
+              description: `Comparing ${this.heap[m]} (min level, index ${m + 1}) with parent ${this.heap[parentM]} (max level, index ${parentM + 1})`,
             });
             this.steps.push({
               heap: [...this.heap],
@@ -354,51 +251,200 @@ export class MinMaxHeap {
               description: `No swap needed`,
             });
           }
-        }
-        this.bubbleDown(smallest);
-      }
-    } else {
-      // Max 層：檢查子節點（min 層）
-      let largest = index;
-      let largestValue = this.heap[index];
-      const children = [2 * index, 2 * index + 1];
-
-      for (const child of children) {
-        if (child <= lastIndex) {
-          this.steps.push({
-            heap: [...this.heap],
-            highlight: [index, child],
-            description: `Comparing ${this.heap[index]} (max level, index ${index}) with child ${this.heap[child]} (min level, index ${child})`,
-          });
-          if (this.heap[child] > largestValue) {
-            largest = child;
-            largestValue = this.heap[child];
-          }
+          this.pushDown(m);
+        } else {
+          // 子節點
+          this.swap(index, m);
           this.steps.push({
             heap: [...this.heap],
             highlight: null,
-            description: `Child ${this.heap[child]} ${this.heap[child] > largestValue ? 'is larger' : 'is not larger'}`,
+            description: `Swapped ${this.heap[m]} with ${this.heap[index]}`,
           });
         }
-      }
-
-      if (largest !== index) {
-        this.steps.push({
-          heap: [...this.heap],
-          highlight: [index, largest],
-          description: `Swapping ${this.heap[index]} (index ${index}) with largest child ${this.heap[largest]} (index ${largest})`,
-        });
-        [this.heap[index], this.heap[largest]] = [
-          this.heap[largest],
-          this.heap[index],
-        ];
+      } else {
         this.steps.push({
           heap: [...this.heap],
           highlight: null,
-          description: `Swapped ${this.heap[largest]} with ${this.heap[index]}`,
+          description: `No swap needed`,
         });
-        this.bubbleDown(largest);
+      }
+    } else {
+      // Max 層
+      const m = this.getLargestDescendant(index);
+      if (m === index) return;
+
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, m],
+        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with largest descendant ${this.heap[m]} (index ${m + 1})`,
+      });
+
+      if (this.heap[m] > this.heap[index]) {
+        if (this.getLevel(m) - this.getLevel(index) === 2) {
+          // 孫節點
+          this.swap(index, m);
+          this.steps.push({
+            heap: [...this.heap],
+            highlight: null,
+            description: `Swapped ${this.heap[m]} with ${this.heap[index]}`,
+          });
+          const parentM = this.parent(m);
+          if (this.heap[m] < this.heap[parentM]) {
+            this.steps.push({
+              heap: [...this.heap],
+              highlight: [m, parentM],
+              description: `Comparing ${this.heap[m]} (max level, index ${m + 1}) with parent ${this.heap[parentM]} (min level, index ${parentM + 1})`,
+            });
+            this.swap(m, parentM);
+            this.steps.push({
+              heap: [...this.heap],
+              highlight: null,
+              description: `Swapped ${this.heap[parentM]} with ${this.heap[m]}`,
+            });
+          } else if (this.heap[m] >= this.heap[parentM]) {
+            this.steps.push({
+              heap: [...this.heap],
+              highlight: [m, parentM],
+              description: `Comparing ${this.heap[m]} (max level, index ${m + 1}) with parent ${this.heap[parentM]} (min level, index ${parentM + 1})`,
+            });
+            this.steps.push({
+              heap: [...this.heap],
+              highlight: null,
+              description: `No swap needed`,
+            });
+          }
+          this.pushDown(m);
+        } else {
+          // 子節點
+          this.swap(index, m);
+          this.steps.push({
+            heap: [...this.heap],
+            highlight: null,
+            description: `Swapped ${this.heap[m]} with ${this.heap[index]}`,
+          });
+        }
+      } else {
+        this.steps.push({
+          heap: [...this.heap],
+          highlight: null,
+          description: `No swap needed`,
+        });
       }
     }
+  }
+
+  // Push-up 操作（維基百科 bubble-up）
+  private pushUp(index: number) {
+    if (index === 0) return;
+
+    const parentIndex = this.parent(index);
+    this.steps.push({
+      heap: [...this.heap],
+      highlight: [index, parentIndex],
+      description: `Comparing ${this.heap[index]} (index ${index + 1}) with parent ${this.heap[parentIndex]} (${this.isMinLevel(parentIndex) ? 'min' : 'max'} level, index ${parentIndex + 1})`,
+    });
+
+    if (this.isMinLevel(index)) {
+      // Min 層
+      if (this.heap[index] > this.heap[parentIndex]) {
+        this.swap(index, parentIndex);
+        this.steps.push({
+          heap: [...this.heap],
+          highlight: null,
+          description: `Swapped ${this.heap[parentIndex]} with ${this.heap[index]}`,
+        });
+        this.pushUpMax(parentIndex);
+      } else {
+        this.steps.push({
+          heap: [...this.heap],
+          highlight: null,
+          description: `No swap needed`,
+        });
+        this.pushUpMin(index);
+      }
+    } else {
+      // Max 層
+      if (this.heap[index] < this.heap[parentIndex]) {
+        this.swap(index, parentIndex);
+        this.steps.push({
+          heap: [...this.heap],
+          highlight: null,
+          description: `Swapped ${this.heap[parentIndex]} with ${this.heap[index]}`,
+        });
+        this.pushUpMin(parentIndex);
+      } else {
+        this.steps.push({
+          heap: [...this.heap],
+          highlight: null,
+          description: `No swap needed`,
+        });
+        this.pushUpMax(index);
+      }
+    }
+  }
+
+  // Push-up for min level
+  private pushUpMin(index: number) {
+    const grandparentIndex = this.grandparent(index);
+    if (grandparentIndex >= 0 && this.heap[index] < this.heap[grandparentIndex]) {
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, grandparentIndex],
+        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex + 1})`,
+      });
+      this.swap(index, grandparentIndex);
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: null,
+        description: `Swapped ${this.heap[grandparentIndex]} with ${this.heap[index]}`,
+      });
+      this.pushUpMin(grandparentIndex);
+    } else if (grandparentIndex >= 0) {
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, grandparentIndex],
+        description: `Comparing ${this.heap[index]} (min level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (min level, index ${grandparentIndex + 1})`,
+      });
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: null,
+        description: `No swap needed`,
+      });
+    }
+  }
+
+  // Push-up for max level
+  private pushUpMax(index: number) {
+    const grandparentIndex = this.grandparent(index);
+    if (grandparentIndex >= 0 && this.heap[index] > this.heap[grandparentIndex]) {
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, grandparentIndex],
+        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex + 1})`,
+      });
+      this.swap(index, grandparentIndex);
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: null,
+        description: `Swapped ${this.heap[grandparentIndex]} with ${this.heap[index]}`,
+      });
+      this.pushUpMax(grandparentIndex);
+    } else if (grandparentIndex >= 0) {
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: [index, grandparentIndex],
+        description: `Comparing ${this.heap[index]} (max level, index ${index + 1}) with grandparent ${this.heap[grandparentIndex]} (max level, index ${grandparentIndex + 1})`,
+      });
+      this.steps.push({
+        heap: [...this.heap],
+        highlight: null,
+        description: `No swap needed`,
+      });
+    }
+  }
+
+  // 交換節點
+  private swap(i: number, j: number) {
+    [this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]];
   }
 }

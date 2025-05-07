@@ -12,7 +12,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
   const [heap] = useState(new MinMaxHeap());
   const [steps, setSteps] = useState<HeapStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [heapArray, setHeapArray] = useState<number[]>([0]); // 1-based
+  const [heapArray, setHeapArray] = useState<number[]>([]); // 0-based
   const [highlight, setHighlight] = useState<number[] | null>(null);
   const [description, setDescription] = useState('');
 
@@ -23,7 +23,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
       const newSteps = heap.insert(value);
       setSteps(newSteps);
       setCurrentStep(0);
-      setHeapArray(newSteps[0]?.heap || [0]);
+      setHeapArray(newSteps[0]?.heap || []);
       setHighlight(newSteps[0]?.highlight || null);
       setDescription(newSteps[0]?.description || '');
       clearInput();
@@ -35,7 +35,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     const newSteps = heap.deleteMin();
     setSteps(newSteps);
     setCurrentStep(0);
-    setHeapArray(newSteps[0]?.heap || [0]);
+    setHeapArray(newSteps[0]?.heap || []);
     setHighlight(newSteps[0]?.highlight || null);
     setDescription(newSteps[0]?.description || '');
   };
@@ -45,7 +45,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     const newSteps = heap.deleteMax();
     setSteps(newSteps);
     setCurrentStep(0);
-    setHeapArray(newSteps[0]?.heap || [0]);
+    setHeapArray(newSteps[0]?.heap || []);
     setHighlight(newSteps[0]?.highlight || null);
     setDescription(newSteps[0]?.description || '');
   };
@@ -63,7 +63,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
 
   // 繪製堆的 SVG
   const renderHeap = () => {
-    if (heapArray.length <= 1) return <p className="text-gray-500">Heap is empty</p>;
+    if (heapArray.length === 0) return <p className="text-gray-500">Heap is empty</p>;
 
     const nodes: JSX.Element[] = [];
     const lines: JSX.Element[] = [];
@@ -71,21 +71,21 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     const levelHeight = 100;
     const canvasWidth = 800;
 
-    // 計算節點位置（1-based）
+    // 計算節點位置（0-based）
     const getNodePosition = (index: number) => {
-      const level = Math.floor(Math.log2(index));
+      const level = Math.floor(Math.log2(index + 1));
       const nodesInLevel = Math.pow(2, level);
-      const nodeIndexInLevel = index - Math.pow(2, level);
+      const nodeIndexInLevel = index - (Math.pow(2, level) - 1);
       const x = (canvasWidth / (nodesInLevel + 1)) * (nodeIndexInLevel + 1);
       const y = level * levelHeight + 50;
       return { x, y };
     };
 
-    // 判斷節點是否在 Min 層（奇數層）
-    const isMinLevel = (index: number) => Math.floor(Math.log2(index)) % 2 === 0;
+    // 判斷節點是否在 Min 層（偶數層）
+    const isMinLevel = (index: number) => Math.floor(Math.log2(index + 1)) % 2 === 0;
 
     // 繪製節點和連線
-    for (let index = 1; index < heapArray.length; index++) {
+    for (let index = 0; index < heapArray.length; index++) {
       const { x, y } = getNodePosition(index);
       const isHighlighted = highlight && highlight.includes(index);
       const fillColor = isHighlighted
@@ -104,8 +104,8 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
       );
 
       // 繪製父子連線
-      const leftChildIndex = 2 * index;
-      const rightChildIndex = 2 * index + 1;
+      const leftChildIndex = 2 * index + 1;
+      const rightChildIndex = 2 * index + 2;
       if (leftChildIndex < heapArray.length) {
         const childPos = getNodePosition(leftChildIndex);
         lines.push(
@@ -137,7 +137,7 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     }
 
     return (
-      <svg width={canvasWidth} height={(Math.floor(Math.log2(heapArray.length)) + 1) * levelHeight}>
+      <svg width={canvasWidth} height={(Math.floor(Math.log2(heapArray.length + 1)) + 1) * levelHeight}>
         {lines}
         {nodes}
       </svg>
