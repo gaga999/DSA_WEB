@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { MinMaxHeap, HeapStep } from './MinMaxHeap';
 
 interface HeapVisualizerProps {
@@ -65,8 +65,8 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
   const renderHeap = () => {
     if (heapArray.length <= 1) return <p className="text-gray-500">Heap is empty</p>;
 
-    const nodes: JSX.Element[] = [];
-    const lines: JSX.Element[] = [];
+    const nodes: React.ReactNode[] = [];
+    const lines: React.ReactNode[] = [];
     const nodeRadius = 20;
     const levelHeight = 100;
     const canvasWidth = 800;

@@ -87,7 +87,7 @@ export class MinMaxHeap {
       return this.steps;
     }
 
-    const min = this.heap[1];
+    // const min = this.heap[1];
     const lastIndex = this.heap.length - 1;
     this.heap[1] = this.heap[lastIndex];
     this.heap.pop();
