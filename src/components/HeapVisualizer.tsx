@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MinMaxHeap, HeapStep } from './MinMaxHeap';
 
 interface HeapVisualizerProps {
@@ -50,16 +50,21 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     setDescription(newSteps[0]?.description || '');
   };
 
-  // 下一步
-  const handleNextStep = () => {
-    if (currentStep < steps.length - 1) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      setHeapArray(steps[nextStep].heap);
-      setHighlight(steps[nextStep].highlight);
-      setDescription(steps[nextStep].description);
+  // 自動播放步驟
+  useEffect(() => {
+    if (steps.length > 0 && currentStep < steps.length - 1) {
+      const timer = setTimeout(() => {
+        setCurrentStep((prev) => {
+          const nextStep = prev + 1;
+          setHeapArray(steps[nextStep].heap);
+          setHighlight(steps[nextStep].highlight);
+          setDescription(steps[nextStep].description);
+          return nextStep;
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [steps, currentStep]);
 
   // 繪製堆的 SVG
   const renderHeap = () => {
@@ -69,7 +74,18 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     const lines: React.ReactNode[] = [];
     const nodeRadius = 20;
     const levelHeight = 100;
-    const canvasWidth = 800;
+
+    // 計算目前堆的最大層級
+    const maxLevel = Math.floor(Math.log2(heapArray.length - 1));
+    // 最後一層的節點數
+    const lastLevelNodes = heapArray.length - Math.pow(2, maxLevel);
+    // 最寬層的節點數
+    const maxNodesInLevel = Math.max(Math.pow(2, maxLevel), lastLevelNodes);
+
+    // 動態設定 canvasWidth
+    const minWidth = 400;
+    const nodeSpacing = 60;
+    const canvasWidth = Math.max(minWidth, maxNodesInLevel * nodeSpacing);
 
     // 計算節點位置（1-based）
     const getNodePosition = (index: number) => {
@@ -137,42 +153,44 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
     }
 
     return (
-      <svg width={canvasWidth} height={(Math.floor(Math.log2(heapArray.length)) + 1) * levelHeight}>
-        {lines}
-        {nodes}
-      </svg>
+      <div style={{ overflowX: 'auto', width: '100vw', maxWidth: '100vw' }}>
+        <svg
+          width={canvasWidth}
+          height={(Math.floor(Math.log2(heapArray.length)) + 1) * levelHeight}
+          style={{ display: 'block', margin: '0 auto' }}
+        >
+          {lines}
+          {nodes}
+        </svg>
+      </div>
     );
   };
 
   return (
     <div className="flex flex-col items-center">
       <div className="mb-4 flex space-x-2">
-        <button
-          onClick={handleInsert}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Insert
-        </button>
-        <button
-          onClick={handleDeleteMin}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Delete Min
-        </button>
-        <button
-          onClick={handleDeleteMax}
-          className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
-        >
-          Delete Max
-        </button>
-        {steps.length > 0 && currentStep < steps.length - 1 && (
-          <button
-            onClick={handleNextStep}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-          >
-            Next Step
-          </button>
-        )}
+        {steps.length === 0 || currentStep === steps.length - 1 ? (
+          <>
+            <button
+              onClick={handleInsert}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Insert
+            </button>
+            <button
+              onClick={handleDeleteMin}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
+              Delete Min
+            </button>
+            <button
+              onClick={handleDeleteMax}
+              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+            >
+              Delete Max
+            </button>
+          </>
+        ) : null}
       </div>
       <div className="border p-4 bg-white rounded shadow">{renderHeap()}</div>
       <p className="mt-4 text-gray-700">{description}</p>
