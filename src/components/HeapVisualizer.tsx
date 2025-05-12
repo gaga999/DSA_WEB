@@ -164,14 +164,17 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
   const renderHeap = () => {
     if (heapArray.length <= 1) {
       return (
-        <div style={{ overflowX: 'auto', width: '85vw', maxWidth: '100vw', height: '55vh', maxHeight: '100vh' }}>
-          <p className="text-gray-500 text-center text-lg">Heap is empty</p>;
+        <div style={{
+          overflowX: 'auto', backgroundColor: '#f3f4f6',
+          width: '85vw', maxWidth: '100vw', height: '55vh', maxHeight: '100vh'
+        }}>
+          <p className="text-gray-700 text-center text-lg">Heap is empty</p>;
         </div>
       );
     }
     const nodes: React.ReactNode[] = [];
     const lines: React.ReactNode[] = [];
-    const nodeRadius = 30;
+    const nodeRadius = 40;
     const levelHeight = nodeRadius * 3.5;
 
     // 計算目前堆的最大層級
@@ -183,17 +186,18 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
 
     // 動態設定 canvasWidth
     const nodeSpacing = nodeRadius * 3; // 節點間距
-    const canvasWidth = maxNodesInLevel * nodeSpacing + 60;
+    const canvasWidth = (maxNodesInLevel + 0.5) * nodeSpacing;
     const height = (Math.floor(Math.log2(heapArray.length)) + 1) * levelHeight;
     // const minWidth = 600;
 
     // 計算節點位置（1-based）
     const getNodePosition = (index: number) => {
       const level = Math.floor(Math.log2(index));
-      const nodesInLevel = Math.pow(2, level);
+      // const nodesInLevel = Math.pow(2, level);
       const nodeIndexInLevel = index - Math.pow(2, level);
-      const x = (canvasWidth / (nodesInLevel + 1)) * (nodeIndexInLevel + 1);
-      const y = level * levelHeight + 50;
+      //const x = (canvasWidth / (nodesInLevel + 1)) * (nodeIndexInLevel + 1);
+      const x = ((canvasWidth - 0.5 * nodeSpacing) / Math.pow(2, level + 1)) * (nodeIndexInLevel * 2 + 1) + 0.25 * nodeSpacing;
+      const y = (level + 0.5) * levelHeight;
       return { x, y };
     };
 
@@ -210,15 +214,66 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
           ? '#3B82F6' // 藍色（Min 層）
           : '#F25555'; // 綠色（Max 層）
 
+      // nodes.push(
+      //   <g key={index}>
+      //     <circle cx={x} cy={y} r={nodeRadius} fill={fillColor} stroke="#1F2937" strokeWidth="2" />
+      //     <text x={x} y={y + 5} textAnchor="middle" fill="white" fontSize="20">
+      //       {heapArray[index]}
+      //     </text>
+      //   </g>
+      // );
+
       nodes.push(
         <g key={index}>
+          <title>{heapArray[index]}</title>
           <circle cx={x} cy={y} r={nodeRadius} fill={fillColor} stroke="#1F2937" strokeWidth="2" />
           <text x={x} y={y + 5} textAnchor="middle" fill="white" fontSize="20">
-            {heapArray[index]}
+            {String(heapArray[index]).length > 7
+              ? heapArray[index].toExponential(2)
+              : heapArray[index]}
           </text>
         </g>
       );
 
+      // nodes.push(
+      //   <g key={index}>
+      //     <title>{heapArray[index]}</title>
+      //     <circle cx={x} cy={y} r={nodeRadius} fill={fillColor} stroke="#1F2937" strokeWidth="2" />
+      //     {(() => {
+      //       const textValue =
+      //         String(heapArray[index]).replace('-', '').replace('.', '').length > 6
+      //           ? heapArray[index].toExponential(2)
+      //           : heapArray[index];
+      //       const fontSize = 16;
+      //       const padding = 6;
+      //       const textWidth = textValue.toString().length * (fontSize * 0.6); // 粗略估計寬度
+      //       const textHeight = fontSize + 4;
+
+      //       return (
+      //         <>
+      //           <rect
+      //             x={x - textWidth / 2 - padding / 2}
+      //             y={y - textHeight / 2}
+      //             width={textWidth + padding}
+      //             height={textHeight}
+      //             rx={4}
+      //             ry={4}
+      //             fill="rgba(0, 0, 0, 0.4)" // 可改成你要的底色或螢光色
+      //           />
+      //           <text
+      //             x={x}
+      //             y={y + 5}
+      //             textAnchor="middle"
+      //             fill="white"
+      //             fontSize={fontSize}
+      //           >
+      //             {textValue}
+      //           </text>
+      //         </>
+      //       );
+      //     })()}
+      //   </g>
+      // );
       // 繪製父子連線
       const leftChildIndex = 2 * index;
       const rightChildIndex = 2 * index + 1;
@@ -263,14 +318,17 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
       //     {nodes}
       //   </svg>
       // </div>
-      <div style={{ overflowX: 'auto', width: '85vw', maxWidth: '100vw', height: '50vh', maxHeight: '100vh' }}>
+      <div style={{
+        overflowX: 'auto', backgroundColor: '#e5e7eb',
+        width: '90vw', maxWidth: '100vw', height: '60vh', maxHeight: '100vh'
+      }}>
         <svg
           width="100%"
           height="100%"
           viewBox={`0 0 ${canvasWidth} ${height}`}
           preserveAspectRatio="xMidYMid meet"
           style={{
-            display: 'block', margin: '0 auto',
+            display: 'block', margin: '0 auto', backgroundColor: '#e5e7eb',
             minWidth: `${canvasWidth / 1.5}px`, maxWidth: `${canvasWidth * 1.5}px`,
             minHeight: `${height / 1.5}px`, maxHeight: `${height * 1.5}px`
           }}
@@ -350,8 +408,8 @@ const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ inputValue, clearInput 
           </>
         )}
       </div>
-      <div className="border p-4 bg-white rounded shadow">{renderHeap()}</div>
-      <p className="mt-4 text-3xl text-gray-700">{description}</p>
+      <div className="border p-4 bg-gray-200 rounded shadow">{renderHeap()}</div>
+      <p className="mt-4 text-2xl text-gray-700">{description}</p>
     </div>
   );
 };
