@@ -8,6 +8,19 @@ export class MinMaxHeap {
   private heap: number[] = [0]; // 1-based 索引，0 留空
   private steps: HeapStep[] = [];
 
+  toJSON() {
+    return {
+      heap: this.heap,
+      steps: this.steps,
+    };
+  }
+  static fromJSON(data: { heap: number[]; steps: HeapStep[] }): MinMaxHeap {
+    const instance = new MinMaxHeap();
+    instance.heap = data.heap || [0];
+    instance.steps = data.steps || [];
+    return instance;
+  }
+
   // 獲取節點所在層級
   private getLevel(index: number): number {
     return Math.floor(Math.log2(index));
@@ -37,6 +50,11 @@ export class MinMaxHeap {
     return this.parent(this.parent(index));
   }
 
+  clear(): void {
+    this.heap = [0]; // 重置為初始狀態（1-based）
+    this.steps = [];
+  }
+
   // 插入新值
   insert(value: number) {
     this.steps = [];
@@ -51,7 +69,7 @@ export class MinMaxHeap {
     this.steps.push({
       heap: [...this.heap],
       highlight: null,
-      description: `Process ended`,
+      description: `finish`,
     });
     return this.steps;
   }
@@ -68,7 +86,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Process ended`,
+        description: `finish`,
       });
       return this.steps;
     }
@@ -82,7 +100,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Process ended`,
+        description: `finish`,
       });
       return this.steps;
     }
@@ -100,7 +118,7 @@ export class MinMaxHeap {
     this.steps.push({
       heap: [...this.heap],
       highlight: null,
-      description: `Process ended`,
+      description: `finish`,
     });
     return this.steps;
   }
@@ -117,7 +135,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Process ended`,
+        description: `finish`,
       });
       return this.steps;
     }
@@ -131,7 +149,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Process ended`,
+        description: `finish`,
       });
       return this.steps;
     }
@@ -164,7 +182,7 @@ export class MinMaxHeap {
       this.steps.push({
         heap: [...this.heap],
         highlight: null,
-        description: `Process ended`,
+        description: `finish`,
       });
       return this.steps;
     }
